@@ -1,0 +1,13 @@
+[package]
+name = "scoped_alloca"
+version = "0.1.0"
+authors = ["Daniel Kolsoi <ThaDan64@gmail.com>"]
+description = ""
+repository = "https://github.com/TheDan64/scoped_alloca"
+readme = "README.md"
+keywords = ["alloca", "safe"]
+license = "Apache-2.0"
+categories = []
+
+[dependencies]
+libc = "0.2"
