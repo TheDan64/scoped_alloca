@@ -7,8 +7,8 @@ use std::slice::from_raw_parts_mut;
 
 #[link(name = "alloca")]
 extern "C" {
-    #[inline(always)]
     #[no_mangle]
+    #[inline(always)]
     fn c_alloca(_: size_t) -> *mut c_void;
 }
 
@@ -27,18 +27,25 @@ extern "C" {
 
 // }
 
+use std::fmt::Debug;
+
 #[inline(never)]
-pub fn alloca_collect<T, I: Iterator<Item = T>, R, F: FnOnce(&mut [T]) -> R>(mut iter: I, f: F) -> Result<R, ()> {
-    let len = iter.by_ref().count();
+pub fn alloca_collect<T: Debug, I: ExactSizeIterator<Item = T>, R, F: FnOnce(&mut [T]) -> R>(iter: I, f: F) -> Result<R, ()> {
+    let len = iter.len();
     let total_size = size_of::<T>() * len;
+    // println!("len: {}", len);
+    // println!("total_size: {}", total_size);
 
     // TODO: Check if stack has enough space, Err if not
 
     let slice = unsafe { from_raw_parts_mut::<T>(c_alloca(total_size) as *mut T, len) };
 
     for (i, item) in iter.enumerate() {
+        // println!("slice[{:?}] = {:?}", i, item);
         slice[i] = item;
     }
+
+    // println!("Slice: {:?}", slice);
 
     // REVIEW: Should we catch panic and Err?
     Ok(f(slice))
@@ -51,12 +58,16 @@ mod tests {
 
     #[test]
     fn test_alloca_collect() {
-        // fn inkwell_does_stuff(input: &[&InkwellValue]) {
-        //     let mut input = Vec<LLVMValueRef> = input.iter().map(|val| val.as_value_ref()).collect();
-        // collect_alloca(iter)
         let v = vec![1, 2, 3, 4];
-        let iter = v.iter().map(|v| v + 3);
-        let res = alloca_collect(iter, |alloc| alloc.iter().sum::<i32>());
+        let iter = v.iter().map(|v| v + 2);
+        let res = alloca_collect(iter, |alloc| {
+            assert_eq!(alloc[0], 3, "alloc: {:?}", alloc);
+            assert_eq!(alloc[1], 4);
+            assert_eq!(alloc[2], 5);
+            assert_eq!(alloc[3], 6);
+
+            alloc.iter().sum::<i32>()
+        });
 
         assert_eq!(res.unwrap(), 10);
     }
