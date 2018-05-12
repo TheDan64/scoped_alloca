@@ -5,19 +5,19 @@ use std::iter::Iterator;
 use std::mem::size_of;
 use std::slice::from_raw_parts_mut;
 
-#[link(name = "c")]
+#[link(name = "alloca")]
 extern "C" {
+    #[inline(always)]
     #[no_mangle]
-    fn alloca(_: size_t) -> *mut c_void;
+    fn c_alloca(_: size_t) -> *mut c_void;
 }
 
 /// Alloca is uninitialized and f is not guarenteed to initialize it before modifying it
-#[inline(never)]
 // pub unsafe fn scoped_alloca<'f, T: 'f, R, F: FnOnce(&'f mut [T]) -> R>(len: size_t, f: F) -> Result<R, ()> {
 //     let total_size = size_of::<T>() * len;
 //     // TODO: Check if stack has enough space, Err if not
 
-//     let slice = from_raw_parts_mut::<'f, T>(alloca(total_size) as *mut T, len);
+//     let slice = from_raw_parts_mut::<'f, T>(c_alloca(total_size) as *mut T, len);
 
 //     // TODO: catch panic and err?
 //     Ok(f(slice))
@@ -27,13 +27,14 @@ extern "C" {
 
 // }
 
+#[inline(never)]
 pub fn alloca_collect<T, I: Iterator<Item = T>, R, F: FnOnce(&mut [T]) -> R>(mut iter: I, f: F) -> Result<R, ()> {
     let len = iter.by_ref().count();
     let total_size = size_of::<T>() * len;
 
     // TODO: Check if stack has enough space, Err if not
 
-    let slice = unsafe { from_raw_parts_mut::<T>(alloca(total_size) as *mut T, len) };
+    let slice = unsafe { from_raw_parts_mut::<T>(c_alloca(total_size) as *mut T, len) };
 
     for (i, item) in iter.enumerate() {
         slice[i] = item;
