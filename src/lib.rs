@@ -57,6 +57,8 @@ mod tests {
         let v = vec![1, 2, 3, 4];
         let iter = v.iter().map(|v| v + 3);
         let res = alloca_collect(iter, |alloc| alloc.iter().sum::<i32>());
+
+        assert_eq!(res.unwrap(), 10);
     }
 
     // #[test]
