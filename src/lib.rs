@@ -1,7 +1,6 @@
 extern crate libc;
 
 use libc::{c_void, size_t};
-use std::iter::Iterator;
 use std::mem::size_of;
 use std::slice::from_raw_parts_mut;
 
@@ -24,28 +23,20 @@ extern "C" {
 // }
 
 // pub fn scoped_alloca_default<T: Default>(size: size_t) {
-
 // }
 
-use std::fmt::Debug;
-
 #[inline(never)]
-pub fn alloca_collect<T: Debug, I: ExactSizeIterator<Item = T>, R, F: FnOnce(&mut [T]) -> R>(iter: I, f: F) -> Result<R, ()> {
+pub fn alloca_collect<T, I, R, F>(iter: I, f: F) -> Result<R, ()> where I: ExactSizeIterator<Item = T>, F: FnOnce(&mut [T]) -> R {
     let len = iter.len();
     let total_size = size_of::<T>() * len;
-    // println!("len: {}", len);
-    // println!("total_size: {}", total_size);
 
     // TODO: Check if stack has enough space, Err if not
 
     let slice = unsafe { from_raw_parts_mut::<T>(c_alloca(total_size) as *mut T, len) };
 
     for (i, item) in iter.enumerate() {
-        // println!("slice[{:?}] = {:?}", i, item);
         slice[i] = item;
     }
-
-    // println!("Slice: {:?}", slice);
 
     // REVIEW: Should we catch panic and Err?
     Ok(f(slice))
@@ -59,23 +50,16 @@ mod tests {
     #[test]
     fn test_alloca_collect() {
         let v = vec![1, 2, 3, 4];
-        let iter = v.iter().map(|v| v + 2);
+        let iter = v.iter().map(|v| v + 4);
         let res = alloca_collect(iter, |alloc| {
-            assert_eq!(alloc[0], 3, "alloc: {:?}", alloc);
-            assert_eq!(alloc[1], 4);
-            assert_eq!(alloc[2], 5);
-            assert_eq!(alloc[3], 6);
+            assert_eq!(alloc[0], 5, "alloc: {:?}", alloc);
+            assert_eq!(alloc[1], 6);
+            assert_eq!(alloc[2], 7);
+            assert_eq!(alloc[3], 8);
 
             alloc.iter().sum::<i32>()
         });
 
-        assert_eq!(res.unwrap(), 10);
+        assert_eq!(res, Ok(26));
     }
-
-    // #[test]
-    // fn test_scoped_alloca() {
-    //     let res = scoped_alloca(5, |alloc| {
-
-    //     });
-    // }
 }

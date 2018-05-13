@@ -11,3 +11,6 @@ categories = []
 
 [dependencies]
 libc = "0.2"
+
+# [profile.dev]
+# lto = true
