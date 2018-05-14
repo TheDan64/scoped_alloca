@@ -42,10 +42,31 @@ pub fn alloca_collect<T, I, R, F>(iter: I, f: F) -> Result<R, ()> where I: Exact
     Ok(f(slice))
 }
 
+#[inline(never)]
+pub unsafe fn alloca_uninitialized_slice<T, F, R>(len: usize, f: F) -> Result<R, ()> where F: FnOnce(&mut [T]) -> R {
+    let total_size = size_of::<T>() * len;
+
+    // TODO: Check if stack has enough space, Err if not
+
+    let slice = from_raw_parts_mut::<T>(c_alloca(total_size) as *mut T, len);
+
+    // REVIEW: Should we catch panic and Err?
+    Ok(f(slice))
+}
+
+#[inline(never)]
+pub unsafe fn alloca_uninitialized_block<F, R>(bytes: usize, f: F) -> Result<R, ()> where F: FnOnce(&mut c_void) -> R {
+    // TODO: Check if stack has enough space, Err if not
+
+    let ptr = c_alloca(bytes);
+
+    // REVIEW: Should we catch panic and Err?
+    Ok(f(&mut *ptr))
+}
 
 #[cfg(test)]
 mod tests {
-    use super::{alloca_collect};
+    use super::{alloca_collect, alloca_uninitialized_slice};
 
     #[test]
     fn test_alloca_collect() {
@@ -61,5 +82,19 @@ mod tests {
         });
 
         assert_eq!(res, Ok(26));
+    }
+
+    #[test]
+    fn test_alloca_uninitialized_slice() {
+        let res = unsafe { alloca_uninitialized_slice(4, |alloc| {
+            alloc[0] = 1;
+            alloc[1] = 3;
+            alloc[2] = 5;
+            alloc[3] = 7;
+
+            alloc.iter().sum::<i32>()
+        })};
+
+        assert_eq!(res, Ok(16));
     }
 }
